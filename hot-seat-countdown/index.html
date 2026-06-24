@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hot Seat Countdown</title>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --muted: #777;
+    --track: #ececec;
+    /* Okabe–Ito colorblind-safe palette */
+    --event: #0072B2;    /* blue */
+    --question: #009E73; /* bluish green */
+    --answer: #CC79A7;   /* reddish purple */
+    --warn: #E69F00;     /* orange — final 20% */
+    --expired: #D55E00;  /* vermillion — time's up */
+    --radius: 18px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #ffffff;
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    padding: 2.2vh 3vw;
+    gap: 2vh;
+  }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  h1 {
+    font-size: clamp(1.6rem, 3.2vw, 3rem);
+    margin: 0;
+    letter-spacing: -0.02em;
+  }
+
+  .hint {
+    color: var(--muted);
+    font-size: clamp(0.8rem, 1.4vw, 1.1rem);
+  }
+
+  .timers {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2vh;
+    min-height: 0;
+  }
+
+  .timer {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1vh;
+    min-height: 0;
+  }
+
+  .timer-head {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    flex-wrap: wrap;
+  }
+
+  .timer-label {
+    font-size: clamp(1.1rem, 2.4vw, 2rem);
+    font-weight: 700;
+    flex: 1;
+    min-width: 8rem;
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .controls label {
+    font-size: clamp(0.8rem, 1.4vw, 1.1rem);
+    color: var(--muted);
+  }
+
+  .controls input {
+    width: 4.5rem;
+    font-size: clamp(1rem, 1.8vw, 1.4rem);
+    padding: 0.35rem 0.5rem;
+    text-align: center;
+    border: 2px solid #ccc;
+    border-radius: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .controls button {
+    font-size: clamp(0.9rem, 1.6vw, 1.3rem);
+    font-weight: 700;
+    padding: 0.45rem 1.4rem;
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    cursor: pointer;
+    transition: filter 0.15s ease;
+  }
+  .controls button:hover { filter: brightness(1.08); }
+  .controls button:active { filter: brightness(0.92); }
+
+  .bar-track {
+    flex: 1;
+    min-height: 2.2rem;
+    background: var(--track);
+    border-radius: var(--radius);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .bar-fill {
+    height: 100%;
+    width: 100%;
+    border-radius: var(--radius);
+    transform-origin: left center;
+    /* width is driven by JS via inline style */
+  }
+
+  /* color assignments */
+  .event    .bar-fill, .event    .controls button { background: var(--event); }
+  .question .bar-fill, .question .controls button { background: var(--question); }
+  .answer   .bar-fill, .answer   .controls button { background: var(--answer); }
+
+  /* warning: final 20% of the bar turns orange */
+  .timer.warning .bar-fill { background: var(--warn) !important; }
+
+  /* flashing when expired: full vermillion bar blinks on/off */
+  .timer.expired .bar-fill {
+    width: 100% !important;
+    background: var(--expired) !important;
+    animation: flash 0.7s steps(1, end) infinite;
+  }
+
+  @keyframes flash {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0; }
+  }
+
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: clamp(0.7rem, 1.2vw, 0.95rem);
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>🔥 Hot Seat</h1>
+    <div class="hint">Set minutes, hit Start. Bars run left&nbsp;→&nbsp;right. A bar flashes red when time&rsquo;s up.</div>
+  </header>
+
+  <main class="timers">
+    <section class="timer event" data-key="event">
+      <div class="timer-head">
+        <div class="timer-label">Event</div>
+        <div class="controls">
+          <label>min</label>
+          <input type="number" min="1" step="1" value="60" aria-label="Event minutes">
+          <button type="button">Start</button>
+        </div>
+      </div>
+      <div class="bar-track"><div class="bar-fill"></div></div>
+    </section>
+
+    <section class="timer question" data-key="question">
+      <div class="timer-head">
+        <div class="timer-label">Question</div>
+        <div class="controls">
+          <label>min</label>
+          <input type="number" min="1" step="1" value="15" aria-label="Question minutes">
+          <button type="button">Start</button>
+        </div>
+      </div>
+      <div class="bar-track"><div class="bar-fill"></div></div>
+    </section>
+
+    <section class="timer answer" data-key="answer">
+      <div class="timer-head">
+        <div class="timer-label">Answer</div>
+        <div class="controls">
+          <label>min</label>
+          <input type="number" min="0.5" step="0.5" value="3" aria-label="Answer minutes">
+          <button type="button">Start</button>
+        </div>
+      </div>
+      <div class="bar-track"><div class="bar-fill"></div></div>
+    </section>
+  </main>
+
+  <footer>
+    <a href="../">Up</a> &ndash;
+    <a href="/">Home</a> &ndash;
+    <a href="https://github.com/BrentOzar/vibes">Github</a>
+  </footer>
+
+<script>
+(function () {
+  const timers = document.querySelectorAll('.timer');
+
+  timers.forEach(function (timer) {
+    const input = timer.querySelector('input');
+    const button = timer.querySelector('button');
+    const fill = timer.querySelector('.bar-fill');
+    let rafId = null;
+
+    function start() {
+      const minutes = parseFloat(input.value);
+      if (!(minutes > 0)) {
+        input.focus();
+        return;
+      }
+      cancelAnimationFrame(rafId);
+      timer.classList.remove('expired', 'warning');
+
+      const durationMs = minutes * 60 * 1000;
+      const startTime = performance.now();
+
+      // ensure a clean starting state
+      fill.style.transition = 'none';
+      fill.style.width = '100%';
+
+      function tick(now) {
+        const elapsed = now - startTime;
+        const remaining = Math.max(0, durationMs - elapsed);
+        const pct = (remaining / durationMs) * 100;
+        fill.style.width = pct + '%';
+
+        timer.classList.toggle('warning', pct <= 20);
+
+        if (remaining <= 0) {
+          timer.classList.add('expired');
+          return;
+        }
+        rafId = requestAnimationFrame(tick);
+      }
+      rafId = requestAnimationFrame(tick);
+    }
+
+    button.addEventListener('click', start);
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') start();
+    });
+  });
+})();
+</script>
+</body>
+</html>
